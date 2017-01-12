@@ -24,7 +24,7 @@ def respond(err, response=None):
             'Access-Control-Allow-Origin': '*'
         },
     }
-
+    
 def lambda_handler(event, context):
     print ('Lambda Event Handler: duclos-app-restaurant-service')
     operations = {

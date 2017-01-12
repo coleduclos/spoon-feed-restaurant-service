@@ -296,7 +296,7 @@
                                 "Configuration" : {
                                     "ActionMode" : "CREATE_UPDATE",
                                     "RoleArn" : { "Fn::GetAtt": [ "CloudFormationDeployRole", "Arn" ] },
-                                    "StackName": { "Fn::Join" : [ "", [ { "Ref" : "ServiceName" }, "-cf-stack" ] ] },
+                                    "StackName": { "Fn::Join" : [ "", [ { "Ref" : "ServiceName" }, "-stack" ] ] },
                                     "TemplatePath" : { "Fn::Join" : [ "", [ { "Ref" : "ServiceName" }, "-build-artifacts::", { "Ref" : "DeployStackTemplateFile" } ] ] },
                                     "TemplateConfiguration" : { "Fn::Join" : [ "", [ { "Ref" : "ServiceName" }, "-build-artifacts::", { "Ref" : "DeployStackTemplateConfFile" } ] ] }
                                 },  
