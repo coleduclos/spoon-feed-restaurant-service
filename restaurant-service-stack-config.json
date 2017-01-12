@@ -1,0 +1,14 @@
+{
+    "Parameters" : {
+        "LambdaFunctionName" : "duclos-app-restaurant-service",
+        "LambdaHandler" : "restaurant-service-lambda.lambda_handler",
+        "CodeS3Bucket" : "duclos-app",
+        "CodeS3Key" : "lambda-functions/restaurant-service-lambda.zip",
+        "MemorySize" : "128",
+        "LambdaRoleARN" : "arn:aws:iam::287222052256:role/duclos-app-lambda-role",
+        "RuntimeEnvironment" : "python2.7",
+        "Timeout" : "10",
+        "Subnets" : "subnet-66e5d110",
+        "SecurityGroups" : "sg-aedbfcd7",
+    }
+}

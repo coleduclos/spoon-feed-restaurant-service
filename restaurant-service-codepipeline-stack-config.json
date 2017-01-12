@@ -1,0 +1,18 @@
+{
+    "Parameters" : {
+        "Owner" : "cole.duclos",
+        "ServiceName" : "duclos-app-restaurant-service",
+        "BuildEnvComputeType" : "BUILD_GENERAL1_SMALL",
+        "BuildEnvImage" : "aws/codebuild/docker:1.12.1",
+        "LambdaHandlerFile" : "restaurant-service-lambda.py",
+        "LambdaCodeS3Path" : "duclos-app/lambda-functions/",
+        "LambdaZipFileName" : "restaurant-service-lambda.zip",
+        "GitHubUser" : "coleduclos",
+        "GitHubRepoName" : "spoon-feed-restaurant-service",
+        "GitHubToken" : "",
+        "GitHubBranchName" : "master",
+        "BuildArtifactsLocation" : "sf-te-codebuild-artifacts",
+        "DeployStackTemplateFile" : "restaurant-service-stack.json",
+        "DeployStackTemplateConfFile" : "restaurant-service-stack-config.json"
+    }
+}

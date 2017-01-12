@@ -1,0 +1,15 @@
+version: 0.1
+
+phases:
+    build:
+        commands:
+            - echo Build started on `date`
+            - echo Zipping up the source code
+            - zip -g $LAMBDA_ZIP_FILE $LAMBDA_HANDLER_FILE
+            - echo Uploading Lambda function to s3://$S3_PATH         
+            - aws s3 cp $LAMBDA_ZIP_FILE s3://$S3_PATH   
+artifacts:
+    files:
+        - restaurant-service-stack.json
+        - restaurant-service-stack-config.json
+    discard-paths: yes
