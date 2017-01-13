@@ -83,7 +83,8 @@ def get_restaurant_details(pkey):
     if 'Items' in restaurant:
         details = restaurant['Items']
         if len(details) > 0:
-            return details[0]
+            response = details[0]
+            return response
 
 def lambda_handler(event, context):
     print ('Lambda Event Handler: restaurant-service')
