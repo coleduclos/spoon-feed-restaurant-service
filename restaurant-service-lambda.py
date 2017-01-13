@@ -4,6 +4,22 @@ import decimal
 
 print('Loading function')
 
+dynamo_tables = {
+    'recommendations' :
+    {
+        'table_name' : 'duclos-app-recommendations',
+        'table_pkey' : 'user-id',
+        'operations' : { 'GET' : lambda payload: get_recommendation_details(payload) } 
+    },
+    'restaurants' :
+    {
+        'table_name' : 'duclos-app-restaurants',
+        'index_name' : 'restaurant-id-index',
+        'table_pkey' : 'restaurant-id',
+        'operations' : { 'GET' : lambda payload: get_restaurant_details(payload) } 
+    }
+}
+
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -24,46 +40,63 @@ def respond(err, response=None):
             'Access-Control-Allow-Origin': '*'
         },
     }
-    
-def lambda_handler(event, context):
-    print ('Lambda Event Handler: duclos-app-restaurant-service')
-    operations = {
-        'GET': lambda dynamo, table_attr, x: dynamo.query(
+
+def get_recommendation_details(pkey):
+    table_attr = dynamo_tables['recommendations']
+    dynamo = boto3.resource('dynamodb').Table(table_attr['table_name'])
+    print('Querying recommendation details for {}'.format(pkey))
+    recommendations = dynamo.query(
                 KeyConditionExpression='#partitionkey = :partitionkeyval',
                 ExpressionAttributeNames={
                     '#partitionkey' : table_attr['table_pkey']
                 },
                 ExpressionAttributeValues={
-                    ':partitionkeyval' : x[table_attr['table_pkey']]
+                    ':partitionkeyval' : pkey
                 }
             )
-    }
+    response = []
+    if 'Items' in recommendations:
+        if 'recommendation-map' in recommendations['Items'][0]:
+            recommendation_map = recommendations['Items'][0]['recommendation-map']
+            for r in recommendation_map:
+                details = get_restaurant_details( { 'restaurant-id' : r } )
+                if details is not None:
+                    details['spoon-feed-value'] = recommendation_map[r]
+                    response.append(details)
 
-    dynamo_tables = {
-        'recommendations' :
-        {
-            'table_name' : 'duclos-app-recommendations',
-            'table_pkey' : 'user-id'
-        }
-    }
+    return response
+
+def get_restaurant_details(pkey):
+    table_attr = dynamo_tables['restaurants']
+    dynamo = boto3.resource('dynamodb').Table(table_attr['table_name'])
+    print('Querying restaurant details for {}'.format(pkey))
+    restaurant = dynamo.query(
+                    IndexName=table_attr['index_name'],
+                    KeyConditionExpression='#partitionkey = :partitionkeyval',
+                    ExpressionAttributeNames={
+                        '#partitionkey' : table_attr['table_pkey']
+                    },
+                    ExpressionAttributeValues={
+                        ':partitionkeyval' : pkey
+                    }
+                )
+    if 'Items' in restaurant:
+        if len(restaurant['Items'] > 0):
+            return restaurant[0]
+
+def lambda_handler(event, context):
+    print ('Lambda Event Handler: restaurant-service')
     operation = event['httpMethod']
+    payload = event['pathParameters']
+    dynamo_table = payload['dynamo-table']
+    pkey = payload['pkey']
 
-    if operation in operations:
-        if operation == 'GET':
-            payload = event['pathParameters']
-            dynamo_table = payload['dynamo-table']
-            if dynamo_table in dynamo_tables:
-                dynamo = boto3.resource('dynamodb').Table(dynamo_tables[dynamo_table]['table_name'])
-                response = operations[operation](dynamo, dynamo_tables[dynamo_table], payload)
-            else:
-                return respond(ValueError('Unsupported query "{}"'.format(dynamo_table)))
-
-        if 'Items' in response:
-            response = response['Items']
+    if dynamo_table in dynamo_tables:
+        if operation in dynamo_tables[dynamo_table]['operations']:
+            response = dynamo_tables[dynamo_table]['operations'][operation](pkey)
         else:
-            response = None
-
-        return respond(None, response)
-
+            return respond(ValueError('Unsupported method "{}" - {}'.format(dynamo_table, operation)))
     else:
-        return respond(ValueError('Unsupported method "{}"'.format(operation)))
+        return respond(ValueError('Unsupported query "{}"'.format(dynamo_table)))        
+
+    return respond(None, response)
