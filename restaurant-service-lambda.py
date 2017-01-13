@@ -9,14 +9,14 @@ dynamo_tables = {
     {
         'table_name' : 'duclos-app-recommendations',
         'table_pkey' : 'user-id',
-        'operations' : { 'GET' : lambda payload: get_recommendation_details(payload) } 
+        'operations' : { 'GET' : lambda pkey: get_recommendation_details(pkey) } 
     },
     'restaurants' :
     {
         'table_name' : 'duclos-app-restaurants',
         'index_name' : 'restaurant-id-index',
         'table_pkey' : 'restaurant-id',
-        'operations' : { 'GET' : lambda payload: get_restaurant_details(payload) } 
+        'operations' : { 'GET' : lambda pkey: get_restaurant_details(pkey) } 
     }
 }
 
@@ -59,7 +59,7 @@ def get_recommendation_details(pkey):
         if 'recommendation-map' in recommendations['Items'][0]:
             recommendation_map = recommendations['Items'][0]['recommendation-map']
             for r in recommendation_map:
-                details = get_restaurant_details( { 'restaurant-id' : r } )
+                details = get_restaurant_details(r)
                 if details is not None:
                     details['spoon-feed-value'] = recommendation_map[r]
                     response.append(details)
@@ -81,8 +81,9 @@ def get_restaurant_details(pkey):
                     }
                 )
     if 'Items' in restaurant:
-        if len(restaurant['Items'] > 0):
-            return restaurant[0]
+        details = restaurant['Items']
+        if len(details) > 0:
+            return details[0]
 
 def lambda_handler(event, context):
     print ('Lambda Event Handler: restaurant-service')
