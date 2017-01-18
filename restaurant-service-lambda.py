@@ -9,14 +9,15 @@ dynamo_tables = {
     {
         'table_name' : 'duclos-app-recommendations',
         'table_pkey' : 'user-id',
-        'operations' : { 'GET' : lambda pkey: get_recommendation_details(pkey) } 
+        'table_skey' : 'geohash',
+        'operations' : { 'GET' : lambda pkey, query_params: get_recommendation_details(pkey, query_params) } 
     },
     'restaurants' :
     {
         'table_name' : 'duclos-app-restaurants',
         'index_name' : 'restaurant-id-index',
         'table_pkey' : 'restaurant-id',
-        'operations' : { 'GET' : lambda pkey: get_restaurant_details(pkey) } 
+        'operations' : { 'GET' : lambda pkey, query_params=None: get_restaurant_details(pkey, query_params) } 
     }
 }
 
@@ -24,7 +25,7 @@ dynamo_tables = {
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
+            if abs(o) % 1 > 0:
                 return float(o)
             else:
                 return int(o)
@@ -41,17 +42,20 @@ def respond(err, response=None):
         },
     }
 
-def get_recommendation_details(pkey):
+def get_recommendation_details(pkey, query_params):
     table_attr = dynamo_tables['recommendations']
     dynamo = boto3.resource('dynamodb').Table(table_attr['table_name'])
-    print('Querying recommendation details for {}'.format(pkey))
+    skey = query_params['skey']
+    print('Querying recommendation details for {} near {}'.format(pkey, skey))
     recommendations = dynamo.query(
-                KeyConditionExpression='#partitionkey = :partitionkeyval',
+                KeyConditionExpression='#partitionkey = :partitionkeyval AND #sortkey = :sortkeyval',
                 ExpressionAttributeNames={
-                    '#partitionkey' : table_attr['table_pkey']
+                    '#partitionkey' : table_attr['table_pkey'],
+                    '#sortkey' : table_attr['table_skey']
                 },
                 ExpressionAttributeValues={
-                    ':partitionkeyval' : pkey
+                    ':partitionkeyval' : pkey,
+                    ':sortkeyval' : skey
                 }
             )
     response = []
@@ -63,10 +67,9 @@ def get_recommendation_details(pkey):
                 if details is not None:
                     details['spoon-feed-value'] = recommendation_map[r]
                     response.append(details)
-
     return response
 
-def get_restaurant_details(pkey):
+def get_restaurant_details(pkey, query_params=None):
     table_attr = dynamo_tables['restaurants']
     dynamo = boto3.resource('dynamodb').Table(table_attr['table_name'])
     print('Querying restaurant details for {}'.format(pkey))
@@ -89,13 +92,14 @@ def get_restaurant_details(pkey):
 def lambda_handler(event, context):
     print ('Lambda Event Handler: restaurant-service')
     operation = event['httpMethod']
-    payload = event['pathParameters']
-    dynamo_table = payload['dynamo-table']
-    pkey = payload['pkey']
+    path_params = event['pathParameters']
+    dynamo_table = path_params['dynamo-table']
+    pkey = path_params['pkey']
+    query_params = event['queryStringParameters']
 
     if dynamo_table in dynamo_tables:
         if operation in dynamo_tables[dynamo_table]['operations']:
-            response = dynamo_tables[dynamo_table]['operations'][operation](pkey)
+            response = dynamo_tables[dynamo_table]['operations'][operation](pkey, query_params)
         else:
             return respond(ValueError('Unsupported method "{}" - {}'.format(dynamo_table, operation)))
     else:
