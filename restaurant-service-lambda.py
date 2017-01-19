@@ -45,17 +45,19 @@ def respond(err, response=None):
 def get_recommendation_details(pkey, query_params):
     table_attr = dynamo_tables['recommendations']
     dynamo = boto3.resource('dynamodb').Table(table_attr['table_name'])
-    skey = query_params['skey']
-    print('Querying recommendation details for {} near {}'.format(pkey, skey))
+    skey_lower = query_params['skey_lower']
+    skey_upper = query_params['skey_upper']
+    print('Querying recommendation details for {} between {} and {}'.format(pkey, skey_lower, skey_upper))
     recommendations = dynamo.query(
-                KeyConditionExpression='#partitionkey = :partitionkeyval AND #sortkey = :sortkeyval',
+                KeyConditionExpression='#partitionkey = :partitionkeyval AND #sortkey BETWEEN :sortkeylower AND :sortkeyupper',
                 ExpressionAttributeNames={
                     '#partitionkey' : table_attr['table_pkey'],
                     '#sortkey' : table_attr['table_skey']
                 },
                 ExpressionAttributeValues={
                     ':partitionkeyval' : pkey,
-                    ':sortkeyval' : skey
+                    ':sortkeylower' : skey_lower,
+                    ':sortkeyupper' : skey_upper
                 }
             )
     response = []
