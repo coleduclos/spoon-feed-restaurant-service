@@ -61,13 +61,15 @@ def get_recommendation_details(pkey, query_params):
                 }
             )
     response = []
-    if 'Items' in recommendations and len(recommendations['Items']) > 0 and 'recommendation-map' in recommendations['Items'][0]:
-            recommendation_map = recommendations['Items'][0]['recommendation-map']
-            for r in recommendation_map:
-                details = get_restaurant_details(r)
-                if details is not None:
-                    details['spoon-feed-value'] = recommendation_map[r]
-                    response.append(details)
+    if 'Items' in recommendations:
+        for item in recommendations['Items']:
+            if 'recommendation-map' in item:
+                recommendation_map = item['recommendation-map']
+                for r in recommendation_map:
+                    details = get_restaurant_details(r)
+                    if details is not None:
+                        details['spoon-feed-value'] = recommendation_map[r]
+                        response.append(details)
     return response
 
 def get_restaurant_details(pkey, query_params=None):
