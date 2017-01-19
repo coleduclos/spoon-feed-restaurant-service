@@ -59,8 +59,7 @@ def get_recommendation_details(pkey, query_params):
                 }
             )
     response = []
-    if 'Items' in recommendations:
-        if 'recommendation-map' in recommendations['Items'][0]:
+    if 'Items' in recommendations and len(recommendations['Items']) > 0 and 'recommendation-map' in recommendations['Items'][0]:
             recommendation_map = recommendations['Items'][0]['recommendation-map']
             for r in recommendation_map:
                 details = get_restaurant_details(r)
