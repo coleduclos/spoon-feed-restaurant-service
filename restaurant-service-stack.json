@@ -1,8 +1,12 @@
 {
     "Parameters" : {
-        "LambdaFunctionName" :{
+        "Owner" :{
             "Type" : "String",
-            "Description" : "Enter the name of the Lambda function."
+            "Description" : "Enter the owner of the stack."
+        },
+        "AppName" :{
+            "Type" : "String",
+            "Description" : "Enter the application name associated with the stack."
         },
         "LambdaHandler" :{
             "Type" : "String",
@@ -20,10 +24,6 @@
             "Type" : "Number",
             "Default" : "128",
             "Description" : "Enter the amount of memory to be allocated for the Lambda function."
-        },
-        "LambdaRoleARN" : {
-            "Type" : "String",
-            "Description" : "Enter the IAM role ARN to be assigned to the Lambda function."
         },
         "RuntimeEnvironment" : {
             "Type" : "String",
@@ -46,6 +46,103 @@
         }
     },
     "Resources" : {
+
+        "LambdaIAMRole" : {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument" : {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [ 
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+                ],
+                "Path": { "Fn::Join" : [ "", [ "/", { "Ref" : "AppName" }, "/" ] ] },
+                "RoleName": { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service-lambda-role" ] ] }
+          }
+        },
+        "LambdaIAMPolicy" : {
+          "Type" : "AWS::IAM::Policy",
+          "Properties" : { 
+                "PolicyDocument" : {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "Stmt1479759591000",
+                            "Effect": "Allow",
+                            "Action": [
+                                "dynamodb:DeleteItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:Query",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "Resource": [
+                                "*"
+                            ]
+                        }
+                    ]
+                },
+                "PolicyName" : { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service-lambda-policy" ] ] },
+                "Roles" : [ { "Ref" : "LambdaIAMRole" }]
+            }
+        },
+        "RestaurantsDynamoDBTable" : {
+            "Type" : "AWS::DynamoDB::Table",
+            "Properties" : {
+                "TableName" : { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurants" ] ] },
+                "KeySchema" : [ 
+                        {
+                            "AttributeName" : "geohash",
+                            "KeyType" : "HASH"
+                        },
+                        {
+                            "AttributeName" : "restaurant-id",
+                            "KeyType" : "RANGE"
+                        }
+                ],
+                "ProvisionedThroughput" : {
+                   "ReadCapacityUnits" : 5,
+                   "WriteCapacityUnits" : 5
+                },
+                "AttributeDefinitions" : [
+                    {
+                        "AttributeName" : "geohash",
+                        "AttributeType" : "S"
+                    }, 
+                    {
+                        "AttributeName" : "restaurant-id",
+                        "AttributeType" : "S"
+                    }
+                ],
+                "GlobalSecondaryIndexes" : [ 
+                    {
+                        "IndexName" : "restaurant-id-index",
+                        "KeySchema" : [ 
+                            {
+                                "AttributeName" : "restaurant-id",
+                                "KeyType" : "HASH"
+                            }
+                        ],                           
+                        "Projection" : {
+                            "ProjectionType" : "ALL"
+                        },
+                        "ProvisionedThroughput" : {
+                            "ReadCapacityUnits" : 5,
+                            "WriteCapacityUnits" : 5
+                        },
+                    }
+                ]
+            }
+        },
         "LambdaFunction" : {
             "Type" : "AWS::Lambda::Function",
             "Properties" : {
@@ -53,10 +150,10 @@
                     "S3Bucket": { "Ref" : "CodeS3Bucket"},
                     "S3Key": { "Ref" : "CodeS3Key" }
                 },
-                "FunctionName" : { "Ref" : "LambdaFunctionName" },
+                "FunctionName" : { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service" ] ] },
                 "Handler" : { "Ref" : "LambdaHandler" },
                 "MemorySize" : { "Ref" : "MemorySize" },
-                "Role" : { "Ref" : "LambdaRoleARN" },
+                "Role" : {"Fn::GetAtt" : ["LambdaIAMRole", "Arn"] },
                 "Runtime" : { "Ref" : "RuntimeEnvironment" },
                 "Timeout" : { "Ref" : "Timeout" },
                 "VpcConfig" : {
