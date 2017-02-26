@@ -8,9 +8,9 @@
             "Type" : "String",
             "Description" : "Enter the application name associated with the stack."
         },
-        "LambdaHandler" :{
+        "ServiceName" : {
             "Type" : "String",
-            "Description" : "Enter the name of the Lambda handler. For example: lambda_handler.lambda_handler"
+            "Description" : "Enter the name of the service associated with the stack"
         },
         "CodeS3Bucket" : {
             "Type" : "String",
@@ -36,13 +36,13 @@
             "Default" : "3",
             "Description" : "Enter the timeout period (in seconds) for the Lambda function."
         },
+        "VPC" : {
+            "Type" : "AWS::EC2::VPC::Id",
+            "Description" : "Select the VPC to deploy the lambda function to."
+        },
         "Subnets" : {
             "Type" : "List<AWS::EC2::Subnet::Id>",
             "Description" : "Select the subnets to deploy the Lambda function to."
-        },
-        "SecurityGroups" : {
-            "Type" : "List<AWS::EC2::SecurityGroup::Id>",
-            "Description" : "Select the security groups to attach to the Lambda function."
         }
     },
     "Resources" : {
@@ -67,7 +67,7 @@
                     "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
                 ],
                 "Path": { "Fn::Join" : [ "", [ "/", { "Ref" : "AppName" }, "/" ] ] },
-                "RoleName": { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service-lambda-role" ] ] }
+                "RoleName": { "Fn::Join" : [ "-", [ { "Ref" : "AppName" }, { "Ref" : "ServiceName" }, "service-lambda-role" ] ] }
           }
         },
         "LambdaIAMPolicy" : {
@@ -91,7 +91,7 @@
                         }
                     ]
                 },
-                "PolicyName" : { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service-lambda-policy" ] ] },
+                "PolicyName" : { "Fn::Join" : [ "-", [ { "Ref" : "AppName" }, { "Ref" : "ServiceName" }, "service-lambda-policy" ] ] },
                 "Roles" : [ { "Ref" : "LambdaIAMRole" }]
             }
         },
@@ -143,6 +143,23 @@
                 ]
             }
         },
+        "SecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Fn::Join" : [ "-", [ { "Ref" : "AppName" }, { "Ref" : "ServiceName" }, "service-sg" ] ] },
+                "Tags" :  [ 
+                    {
+                        "Key" : "Owner",
+                        "Value" : { "Ref" : "Owner" }
+                    },
+                    {
+                        "Key" : "Name",
+                        "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AppName" }, { "Ref" : "ServiceName" }, "service-sg" ] ] }
+                    }
+                ],
+                "VpcId" : { "Ref" : "VPC" }
+          }
+        },
         "LambdaFunction" : {
             "Type" : "AWS::Lambda::Function",
             "Properties" : {
@@ -150,14 +167,14 @@
                     "S3Bucket": { "Ref" : "CodeS3Bucket"},
                     "S3Key": { "Ref" : "CodeS3Key" }
                 },
-                "FunctionName" : { "Fn::Join" : [ "", [ { "Ref" : "AppName" }, "-restaurant-service" ] ] },
-                "Handler" : { "Ref" : "LambdaHandler" },
+                "FunctionName" : { "Fn::Join" : [ "-", [ { "Ref" : "AppName" }, { "Ref" : "ServiceName" }, "service" ] ] },
+                "Handler" : { "Fn::Join" : [ "-", [ { "Ref" : "ServiceName" }, "service-lambda.lambda_handler" ] ] },
                 "MemorySize" : { "Ref" : "MemorySize" },
                 "Role" : {"Fn::GetAtt" : ["LambdaIAMRole", "Arn"] },
                 "Runtime" : { "Ref" : "RuntimeEnvironment" },
                 "Timeout" : { "Ref" : "Timeout" },
                 "VpcConfig" : {
-                    "SecurityGroupIds" : { "Ref" : "SecurityGroups" },
+                    "SecurityGroupIds" : [{ "Ref" : "SecurityGroup" }],
                     "SubnetIds" : { "Ref" : "Subnets" }
                 }
             }
